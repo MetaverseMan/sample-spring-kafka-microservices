@@ -1,5 +1,6 @@
 package pl.piomin.order.service;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -17,7 +18,7 @@ public class OrderGeneratorService {
     private Executor executor;
     private KafkaTemplate<Long, Order> template;
 
-    public OrderGeneratorService(Executor executor, KafkaTemplate<Long, Order> template) {
+    public OrderGeneratorService(@Qualifier("taskExecutor") Executor executor, KafkaTemplate<Long, Order> template) {
         this.executor = executor;
         this.template = template;
     }

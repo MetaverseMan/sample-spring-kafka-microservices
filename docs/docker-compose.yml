@@ -1,0 +1,47 @@
+version: '3'
+services:
+  kafka:
+    image: apache/kafka:3.8.0  # 或 :latest（检查可用性）
+    container_name: kafka
+    ports:
+      - "9092:9092"             # 外部 PLAINTEXT
+      - "9093:9093"             # Controller（KRaft 内部）
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2QkZGMjQ2OTQ0RkU0NTY5M0Q=  # 任意 22 字符 base64
+    volumes:
+      - kafka_data:/tmp/kraft-combined-logs   # KRaft 元数据存储
+    restart: unless-stopped
+      #  kcat:
+      #    image: edenhill/kcat:2.0.0
+      #    container_name: kcat
+      #    stdin_open: true
+      #    tty: true
+      #    command: [ "-b", "kafka:9092" ]   # 容器内用服务名 kafka:9092
+      #    networks:
+    #      - default
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "10850:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "172.27.193.244:9092"  # 或你的 WSL IP:9092
+      DYNAMIC_CONFIG_ENABLED: true
+    depends_on:
+      - kafka
+    restart: unless-stopped
+volumes:
+  kafka_data:

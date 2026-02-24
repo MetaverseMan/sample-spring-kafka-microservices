@@ -1,11 +1,13 @@
 package pl.piomin.order.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import org.apache.kafka.streams.StoreQueryParameters;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +37,8 @@ public class OrderController {
     }
 
     @PostMapping
+//    @Operation(summary = "创建token")
+//    @PostMapping(value = "/createToken", produces = MediaType.APPLICATION_JSON_VALUE)
     public Order create(@RequestBody Order order) {
         order.setId(id.incrementAndGet());
         template.send("orders", order.getId(), order);

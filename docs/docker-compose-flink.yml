@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://172.27.193.244:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2QkZGMjQ2OTQ0RkU0NTY5M0Q=
+    volumes:
+      - kafka_data:/tmp/kraft-combined-logs
+    restart: unless-stopped
+    networks:
+      - flink-net
+
+  flink-jobmanager:
+    image: apache/flink:1.19.1-scala_2.12-java11
+    container_name: flink-jobmanager
+    ports:
+      - "8081:8081"  # Flink Web UI
+      - "6123:6123"
+      - "6124:6124"
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.memory.process.size: 1600m
+        taskmanager.numberOfTaskSlots: 2
+        parallelism.default: 2
+        rest.address: 0.0.0.0
+        rest.bind-port: 8081
+        rest.port: 8081
+        state.backend: filesystem
+        state.checkpoints.dir: file:///flink-checkpoints
+        execution.checkpointing.interval: 10000
+        execution.checkpointing.mode: EXACTLY_ONCE
+    command: jobmanager
+    volumes:
+      - flink-checkpoints:/flink-checkpoints
+      - flink-data:/opt/flink/data
+    networks:
+      - flink-net
+    depends_on:
+      - kafka
+
+  flink-taskmanager:
+    image: apache/flink:1.19.1-scala_2.12-java11
+    container_name: flink-taskmanager
+    depends_on:
+      - flink-jobmanager
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.memory.process.size: 1728m
+        taskmanager.numberOfTaskSlots: 2
+        parallelism.default: 2
+        state.backend: filesystem
+        state.checkpoints.dir: file:///flink-checkpoints
+    command: taskmanager
+    volumes:
+      - flink-checkpoints:/flink-checkpoints
+      - flink-data:/opt/flink/data
+    networks:
+      - flink-net
+
+  flink-sql-client:
+    image: apache/flink:1.19.1-scala_2.12-java11
+    container_name: flink-sql-client
+    depends_on:
+      - flink-jobmanager
+    command: bash -c "sleep infinity"
+    volumes:
+      - flink-checkpoints:/flink-checkpoints
+      - flink-data:/opt/flink/data
+    networks:
+      - flink-net
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "10850:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: true
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - flink-net
+
+volumes:
+  kafka_data:
+  flink-checkpoints:
+  flink-data:
+
+networks:
+  flink-net:
+    external: true
+    driver: bridge

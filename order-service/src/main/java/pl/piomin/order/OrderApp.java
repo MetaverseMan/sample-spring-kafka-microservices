@@ -68,8 +68,8 @@ public class OrderApp {
     @Bean
     public KStream<Long, Order> stream(StreamsBuilder builder) {
         JsonSerde<Order> orderSerde = new JsonSerde<>(Order.class);
-        KStream<Long, Order> stream = builder
-                .stream("payment-orders", Consumed.with(Serdes.Long(), orderSerde));
+        KStream<Long, Order> stream =
+                builder.stream("payment-orders", Consumed.with(Serdes.Long(), orderSerde));
 
         stream.join(
                         builder.stream("stock-orders"),
